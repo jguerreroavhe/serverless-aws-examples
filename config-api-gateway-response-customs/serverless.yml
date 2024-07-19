@@ -1,0 +1,83 @@
+service: nombre-de-tu-servicio
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: us-east-2
+  environment:
+    AWS_FN_REGION: us-east-2
+    AWS_FN_SECRET_NAME: db-dev
+    AWS_FN_RDS_DATA_BASE: DB_STATUS_TRAKING_TEST
+    SP_NAME_001: SP_GET_CONFIG_BY_PROV_TELEMATIC_TEST
+
+functions:
+  get-units-tp:
+    handler: handler.function_main
+    events:
+      - http:
+          path: /get-unit-by-tp
+          method: post
+          cors: true
+          response:
+            statusCodes:
+              401:
+                pattern: '' # Match all 401 responses
+                headers:
+                  Content-Type: "'application/json'"
+                  Access-Control-Allow-Origin: "'*'"
+                template: '{"message":"$context.error.messageString","error":"TokenExpired"}'
+              502:
+                pattern: '' # Match all 502 responses
+                headers:
+                  Content-Type: "'application/json'"
+                  Access-Control-Allow-Origin: "'*'"
+                template: '{"message":"$context.error.messageString","error":"BadGateway"}'
+              504:
+                pattern: '' # Match all 504 responses
+                headers:
+                  Content-Type: "'application/json'"
+                  Access-Control-Allow-Origin: "'*'"
+                template: '{"message":"$context.error.messageString","error":"GatewayTimeout"}'
+
+    role: arn:aws:iam::xxx:role/role-seguimiento
+    layers:
+      - arn:aws:lambda:xxx:xxx:layer:mysql-python:2
+      - arn:aws:lambda:xxx:xxx:layer:requests:2
+
+resources:
+  Resources:
+    GatewayResponseUnauthorized:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Content-Type: "'application/json'"
+        ResponseTemplates:
+          application/json: '{"message":$context.error.messageString,"error":"TokenExpired"}'
+        ResponseType: UNAUTHORIZED
+        RestApiId:
+          Ref: ApiGatewayRestApi
+
+    GatewayResponseDefault5XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Content-Type: "'application/json'"
+        ResponseTemplates:
+          application/json: '{"message":$context.error.messageString,"error":"ServerError"}'
+        ResponseType: DEFAULT_5XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+
+    GatewayResponseDefault4XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Content-Type: "'application/json'"
+        ResponseTemplates:
+          application/json: '{"message":$context.error.messageString,"error":"ClientError"}'
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
